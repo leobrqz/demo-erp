@@ -1,0 +1,128 @@
+name: erp-assistant-demo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-erp}
+      POSTGRES_USER: ${POSTGRES_USER:-erp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp_local_only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://erp:erp_local_only@postgres:5432/erp}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://model-server:8080/v1}
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://erp:erp_local_only@postgres:5432/erp}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: ["sh", "-c", "rq worker --url $${REDIS_URL} default"]
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  model-server:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    profiles: ["ai"]
+    command:
+      - --hf-repo
+      - ${LLM_MODEL_REPO:-openbmb/MiniCPM5-2B-GGUF:Q4_K_M}
+      - --alias
+      - ${LLM_MODEL:-MiniCPM5-2B}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - ${LLM_CONTEXT_SIZE:-4096}
+      - --jinja
+      - --temp
+      - "1.0"
+      - --top-p
+      - "0.95"
+      - --min-p
+      - "0.0"
+      - --api-key
+      - ${LLM_API_KEY:-local-no-auth}
+      - --cors-origins
+      - localhost
+      - --no-webui
+    volumes:
+      - model_cache:/models
+    environment:
+      LLAMA_CACHE: /models
+    ports:
+      - "127.0.0.1:8081:8080"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: ${POSTGRES_VOLUME_NAME:-erp-assistant-demo_postgres_data}
+  redis_data:
+    name: ${REDIS_VOLUME_NAME:-erp-assistant-demo_redis_data}
+  model_cache:
+    name: ${MODEL_CACHE_VOLUME_NAME:-erp-assistant-demo_model_cache}

@@ -1,0 +1,121 @@
+<!-- Leonardo Briquezi
+github: https://github.com/leobrqz
+linkedin: https://www.linkedin.com/in/leonardobri -->
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f6f7">
+    <title>ERP Demo | Catálogo e estoque</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main id="loginScreen" class="login-screen">
+      <form id="loginForm" class="login-card">
+        <div class="brand">
+          <span class="brand-mark">ERP</span>
+          <span>Catálogo e estoque</span>
+        </div>
+        <h1>Acessar o ambiente</h1>
+        <p class="muted">Entre para consultar o catálogo de demonstração.</p>
+        <label for="username">Usuário</label>
+        <input id="username" name="username" autocomplete="username" value="admin" required>
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <p id="loginError" class="form-error" role="alert" hidden></p>
+        <button class="button button-primary button-wide" type="submit">Entrar</button>
+        <p class="login-hint">A senha inicial está no campo <code>ADMIN_PASSWORD</code> do arquivo .env.</p>
+      </form>
+    </main>
+
+    <div id="appScreen" class="app-screen" hidden>
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Início">
+          <span class="brand-mark">ERP</span>
+          <span>Catálogo e estoque</span>
+        </a>
+        <div class="topbar-actions">
+          <span id="apiStatus" class="status-text"><span class="status-dot"></span>Conectando</span>
+          <span id="signedInAs" class="signed-in-as"></span>
+          <button id="logoutButton" class="button button-quiet" type="button">Sair</button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <section class="page-heading">
+          <div>
+            <h1>Visão geral</h1>
+            <p class="muted">Catálogo e consultas do ambiente de demonstração.</p>
+          </div>
+          <button id="refreshButton" class="button button-secondary" type="button">Atualizar dados</button>
+        </section>
+
+        <section class="metric-grid" aria-label="Resumo do catálogo">
+          <article class="metric-card">
+            <span class="metric-label">Produtos cadastrados</span>
+            <strong id="productCount" class="metric-value">--</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Produtos com estoque baixo</span>
+            <strong id="lowStockCount" class="metric-value">--</strong>
+            <span class="metric-foot">10 unidades ou menos</span>
+          </article>
+        </section>
+
+        <div class="workspace-grid">
+          <section class="panel assistant-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Assistente de consulta</h2>
+                <p class="muted">Pergunte com suas palavras sobre produtos e estoque.</p>
+              </div>
+              <span class="read-only-label">Somente leitura</span>
+            </div>
+
+            <div id="conversation" class="conversation" aria-live="polite">
+              <div id="welcomeMessage" class="assistant-message welcome-message">
+                <div class="message-content">
+                  <p>O assistente interpreta sua pergunta e consulta os dados atuais do catálogo. Nenhum registro é alterado.</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="questionForm" class="question-form">
+              <label class="visually-hidden" for="questionInput">Pergunte sobre produtos e estoque</label>
+              <textarea id="questionInput" name="question" rows="2" maxlength="500" placeholder="Escreva sua pergunta…" required></textarea>
+              <div class="composer-footer">
+                <span>Até 500 caracteres</span>
+                <button id="sendButton" class="button button-primary" type="submit">Enviar <span aria-hidden="true">↑</span></button>
+              </div>
+            </form>
+          </section>
+
+          <aside class="panel inventory-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Produtos</h2>
+                <p class="muted">Catálogo de demonstração</p>
+              </div>
+              <span id="inventoryTotal" class="count-label">--</span>
+            </div>
+            <div id="inventoryError" class="inline-error" hidden></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Produto</th><th>Preço</th><th>Estoque</th></tr>
+                </thead>
+                <tbody id="productRows">
+                  <tr><td colspan="3" class="empty-state">Carregando produtos…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="inventory-footer">Estoque baixo: 10 unidades ou menos</div>
+          </aside>
+        </div>
+        <footer class="page-footer">Dados fictícios para demonstração.</footer>
+      </main>
+    </div>
+  </body>
+</html>
